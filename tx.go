@@ -17,10 +17,16 @@ type txid uint64
 // Read-only transactions can be used for retrieving values for keys and creating cursors.
 // Read/write transactions can create and remove buckets and create and remove keys.
 //
+// Tx代表database中的一个read-only或者read/write transaction
+// Read-only transactions可以用于获取keys的values并且创建cursors
+// Read/Write transactions可以创建和删除buckets，以及创建和删除keys
 // IMPORTANT: You must commit or rollback transactions when you are done with
 // them. Pages can not be reclaimed by the writer until no more transactions
 // are using them. A long running read transaction can cause the database to
 // quickly grow.
+// 我们必须在完成一次transaction之后对它进行commit或者rollback
+// Pages不会被writer回收，直到没有transactions在使用它
+// 一个长期运行的transaction，会让database增长得很快
 type Tx struct {
 	writable       bool
 	managed        bool
@@ -37,6 +43,8 @@ type Tx struct {
 	// By default, the flag is unset, which works well for mostly in-memory
 	// workloads. For databases that are much larger than available RAM,
 	// set the flag to syscall.O_DIRECT to avoid trashing the page cache.
+	// 对于那些远远比available RAM大的database，将flag设置为syscall.O_DIRECT来避免
+	// trashing page cache.
 	WriteFlag int
 }
 
@@ -46,6 +54,7 @@ func (tx *Tx) init(db *DB) {
 	tx.pages = nil
 
 	// Copy the meta page since it can be changed by the writer.
+	// 拷贝meta page，因为它会被writer改变
 	tx.meta = &meta{}
 	db.meta().copy(tx.meta)
 
@@ -141,6 +150,8 @@ func (tx *Tx) OnCommit(fn func()) {
 // Commit writes all changes to disk and updates the meta page.
 // Returns an error if a disk write error occurs, or if Commit is
 // called on a read-only transaction.
+// Commit将所有更改写入disk并且更新meta page
+// 如果disk write error发生时，返回错误
 func (tx *Tx) Commit() error {
 	_assert(!tx.managed, "managed tx commit not allowed")
 	if tx.db == nil {
@@ -237,6 +248,8 @@ func (tx *Tx) Commit() error {
 
 // Rollback closes the transaction and ignores all previous updates. Read-only
 // transactions must be rolled back and not committed.
+// Rollback关闭transaction并且忽略之前所有的updates
+// Read-only类型的transaction必须rolled back，不能被committed
 func (tx *Tx) Rollback() error {
 	_assert(!tx.managed, "managed tx rollback not allowed")
 	if tx.db == nil {
@@ -284,6 +297,7 @@ func (tx *Tx) close() {
 	}
 
 	// Clear all references.
+	// 清除所有的引用
 	tx.db = nil
 	tx.meta = nil
 	tx.root = Bucket{tx: tx}
@@ -637,6 +651,7 @@ type TxStats struct {
 	NodeDeref int // number of node dereferences
 
 	// Rebalance statistics.
+	// Rebalance的数据
 	Rebalance     int           // number of node rebalances
 	RebalanceTime time.Duration // total time spent rebalancing
 

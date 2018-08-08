@@ -16,6 +16,7 @@ func flock(db *DB, mode os.FileMode, exclusive bool, timeout time.Duration) erro
 	for {
 		// If we're beyond our timeout then return an error.
 		// This can only occur after we've attempted a flock once.
+		// 至少会尝试flock一次
 		if t.IsZero() {
 			t = time.Now()
 		} else if timeout > 0 && time.Since(t) > timeout {
@@ -47,6 +48,7 @@ func funlock(db *DB) error {
 // mmap memory maps a DB's data file.
 func mmap(db *DB, sz int) error {
 	// Map the data file to memory.
+	// 将data file映射到内存
 	b, err := syscall.Mmap(int(db.file.Fd()), 0, sz, syscall.PROT_READ, syscall.MAP_SHARED|db.MmapFlags)
 	if err != nil {
 		return err
@@ -58,7 +60,9 @@ func mmap(db *DB, sz int) error {
 	}
 
 	// Save the original byte slice and convert to a byte array pointer.
+	// 保存原始的byte slice并且将它转换为byte array pointer
 	db.dataref = b
+	// 将mmap的数据到保存在db.data中
 	db.data = (*[maxMapSize]byte)(unsafe.Pointer(&b[0]))
 	db.datasz = sz
 	return nil

@@ -8,6 +8,7 @@ import (
 )
 
 // node represents an in-memory, deserialized page.
+// node代表了一个内存中的，反序列化的page
 type node struct {
 	bucket     *Bucket
 	isLeaf     bool
@@ -17,6 +18,7 @@ type node struct {
 	pgid       pgid
 	parent     *node
 	children   nodes
+	// page中存储的K/V对
 	inodes     inodes
 }
 
@@ -62,6 +64,7 @@ func (n *node) sizeLessThan(v int) bool {
 }
 
 // pageElementSize returns the size of each page element based on the type of node.
+// pageElementSize根据node的类型返回page element的size
 func (n *node) pageElementSize() int {
 	if n.isLeaf {
 		return leafPageElementSize
@@ -188,6 +191,7 @@ func (n *node) read(p *page) {
 }
 
 // write writes the items onto one or more pages.
+// write方法将items写到一个或多个pages中
 func (n *node) write(p *page) {
 	// Initialize page.
 	if n.isLeaf {
@@ -207,13 +211,18 @@ func (n *node) write(p *page) {
 	}
 
 	// Loop over each item and write it to the page.
+	// 遍历每个item并且将它们写入page中
+	// b是一个切片
 	b := (*[maxAllocSize]byte)(unsafe.Pointer(&p.ptr))[n.pageElementSize()*len(n.inodes):]
+	// 一次for循环就是写入一个element和一个K/V对
 	for i, item := range n.inodes {
 		_assert(len(item.key) > 0, "write: zero-length inode key")
 
 		// Write the page element.
 		if n.isLeaf {
+			// 获取elem在page中的位置并对其进行填充
 			elem := p.leafPageElement(uint16(i))
+			// pos其实是当前element的起始位置和存储其KV之间的间距
 			elem.pos = uint32(uintptr(unsafe.Pointer(&b[0])) - uintptr(unsafe.Pointer(elem)))
 			elem.flags = item.flags
 			elem.ksize = uint32(len(item.key))
@@ -228,6 +237,7 @@ func (n *node) write(p *page) {
 
 		// If the length of key+value is larger than the max allocation size
 		// then we need to reallocate the byte array pointer.
+		// 如果key + value大于max allocation size，那么我们需要重新分配byte array pointer
 		//
 		// See: https://github.com/boltdb/bolt/pull/335
 		klen, vlen := len(item.key), len(item.value)
@@ -236,6 +246,7 @@ func (n *node) write(p *page) {
 		}
 
 		// Write data for the element to the end of the page.
+		// 将element的data写入page的尾部
 		copy(b[0:], item.key)
 		b = b[klen:]
 		copy(b[0:], item.value)
@@ -594,6 +605,9 @@ func (s nodes) Less(i, j int) bool { return bytes.Compare(s[i].inodes[0].key, s[
 // inode represents an internal node inside of a node.
 // It can be used to point to elements in a page or point
 // to an element which hasn't been added to a page yet.
+// inode代表了一个node中的internal node
+// 它可以用于指向一个page中的elements或者还未加入到一个page中的
+// element
 type inode struct {
 	flags uint32
 	pgid  pgid

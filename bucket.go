@@ -33,6 +33,7 @@ const (
 const DefaultFillPercent = 0.5
 
 // Bucket represents a collection of key/value pairs inside the database.
+// Bucket代表了database中一系列的key/value对
 type Bucket struct {
 	*bucket
 	tx       *Tx                // the associated transaction
@@ -59,6 +60,7 @@ type bucket struct {
 }
 
 // newBucket returns a new bucket associated with a transaction.
+// newBucket返回一个和该transaction相关的新的bucket
 func newBucket(tx *Tx) Bucket {
 	var b = Bucket{tx: tx, FillPercent: DefaultFillPercent}
 	if tx.writable {

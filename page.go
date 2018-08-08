@@ -7,6 +7,7 @@ import (
 	"unsafe"
 )
 
+// page结构到ptr元素之前的内容即为页头
 const pageHeaderSize = int(unsafe.Offsetof(((*page)(nil)).ptr))
 
 const minKeysPerPage = 2
@@ -30,13 +31,19 @@ type pgid uint64
 type page struct {
 	id       pgid
 	flags    uint16
+	// count为在页面内存储的元素个数，只在branchPage和metaPage中有用
 	count    uint16
+	// overflow表示当前页是否有后续页，如果有，overflow表示后续页的数量
+	// 否则为0，主要用于记录连续多页
 	overflow uint32
+	// 用于标记页头结尾或者页内存储数据的起始处
+	// 一个页的页头就是由上述的id, flags, count以及overflow组成的
 	ptr      uintptr
 }
 
 // typ returns a human readable page type string used for debugging.
 func (p *page) typ() string {
+	// page的flags用于标明page的类型
 	if (p.flags & branchPageFlag) != 0 {
 		return "branch"
 	} else if (p.flags & leafPageFlag) != 0 {
@@ -108,9 +115,14 @@ func (n *branchPageElement) key() []byte {
 
 // leafPageElement represents a node on a leaf page.
 type leafPageElement struct {
+	// flags标明当前element是否代表一个Bucket，如果是，其值为1
+	// 否则，值为0
 	flags uint32
+	// element对应的K/V对存储位置相对于当前element的便宜
 	pos   uint32
+	// element对应的key的长度
 	ksize uint32
+	// element对应的value的长度
 	vsize uint32
 }
 
